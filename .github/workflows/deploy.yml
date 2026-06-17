@@ -1,0 +1,49 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy to VM via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host:     ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key:      ${{ secrets.VM_SSH_KEY }}
+          port:     22
+          script: |
+            set -e
+            echo "=== Deploying LifeOS ==="
+
+            cd ~/lifeos
+
+            echo "→ Pulling latest code..."
+            git pull origin main
+
+            echo "→ Installing dependencies..."
+            npm ci --prefer-offline
+
+            echo "→ Generating Prisma client..."
+            npx prisma generate
+
+            echo "→ Running DB migrations..."
+            npx prisma migrate deploy
+
+            echo "→ Building..."
+            NODE_ENV=production npm run build
+
+            echo "→ Restarting app..."
+            pm2 restart lifeos --update-env
+
+            echo "✓ Deployed successfully at $(date)"
+            pm2 status lifeos

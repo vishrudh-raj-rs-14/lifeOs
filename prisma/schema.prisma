@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model DailyWeight {
+  id       Int      @id @default(autoincrement())
+  date     DateTime @unique @db.Date
+  weightKg Float
+  createdAt DateTime @default(now())
+}
+
+model Steps {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique @db.Date
+  count     Int
+  createdAt DateTime @default(now())
+}
+
+model Workout {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @db.Date
+  type      WorkoutType
+  exercises Json
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+enum WorkoutType {
+  PUSH
+  PULL
+  LEGS
+  CARDIO
+  UPPER
+  LOWER
+  FULL_BODY
+  OTHER
+}
+
+model GymDay {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique @db.Date
+  didGo     Boolean
+  createdAt DateTime @default(now())
+}
+
+model CfProblem {
+  id           Int      @id @default(autoincrement())
+  date         DateTime @db.Date
+  contestId    Int
+  problemIndex String
+  name         String
+  rating       Int?
+  link         String
+  createdAt    DateTime @default(now())
+}
+
+model CfRatingSnapshot {
+  id            Int      @id @default(autoincrement())
+  date          DateTime @unique @db.Date
+  rating        Int
+  contestName   String?
+  contestId     Int?
+  createdAt     DateTime @default(now())
+}
+
+model DailyGoal {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @db.Date
+  text      String
+  completed Boolean  @default(false)
+  position  Int
+  createdAt DateTime @default(now())
+
+  @@unique([date, position])
+}
+
+model GoalStreak {
+  id                Int      @id @default(autoincrement())
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastCompletedDate DateTime? @db.Date
+}
+
+model LearningLog {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique @db.Date
+  content   String
+  tags      String[]
+  createdAt DateTime @default(now())
+}
+
+model DeepWork {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @unique @db.Date
+  minutes   Int
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model Book {
+  id           Int      @id @default(autoincrement())
+  title        String
+  author       String
+  totalPages   Int?
+  currentPage  Int?
+  startDate    DateTime @db.Date
+  endDate      DateTime? @db.Date
+  status       BookStatus @default(READING)
+  summaryNotes String?
+  genre        String?
+  createdAt    DateTime @default(now())
+}
+
+enum BookStatus {
+  READING
+  COMPLETED
+  PAUSED
+}
+
+model WeeklyReview {
+  id             Int      @id @default(autoincrement())
+  weekStart      DateTime @unique @db.Date
+  wins           String?
+  struggles      String?
+  learnings      String?
+  nextWeekFocus  String?
+  weeklyLearning String?
+  createdAt      DateTime @default(now())
+}
+
+model ScreenTime {
+  id                 Int      @id @default(autoincrement())
+  date               DateTime @unique @db.Date
+  youtubeMinutes     Int      @default(0)
+  socialMediaMinutes Int      @default(0)
+  createdAt          DateTime @default(now())
+}

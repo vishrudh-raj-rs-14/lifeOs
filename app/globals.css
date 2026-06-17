@@ -1,26 +1,139 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ─── Design Tokens ─── */
+:root {
+  --page-bg:     9   9  11;   /* #09090b */
+  --sidebar-bg: 13  13  16;   /* #0d0d10 */
+  --card:       22  22  26;   /* #16161a */
+  --surface:    30  30  36;   /* #1e1e24 */
+  --surface-2:  42  42  50;   /* #2a2a32 */
+  --border:    255 255 255;   /* white — used as rgba */
+  
+  --txt-1: 250 250 252;       /* near-white  */
+  --txt-2: 180 180 190;       /* secondary   */
+  --txt-3: 120 120 132;       /* muted       */
+  --txt-4:  75  75  88;       /* placeholder */
+
+  /* violet accent */
+  --accent:    139  92 246;   /* violet-500 */
+  --accent-hi: 167 139 250;   /* violet-400 */
+
+  /* semantic */
+  --green: 52  211 153;
+  --red:   248 113 113;
+  --amber: 251 191  36;
+  --blue:   96 165 250;
+
+  --sidebar-w: 280px;
+}
+
+html { color-scheme: dark; }
+
+body {
+  background: rgb(var(--page-bg));
+  color: rgb(var(--txt-1));
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
+
+/* ─── Selection ─── */
+::selection { background: rgba(var(--accent), 0.25); }
+
+/* ─── Focus ─── */
+:focus-visible {
+  outline: 2px solid rgba(var(--accent), 0.5);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* ─── Recharts ─── */
+.recharts-cartesian-grid line { stroke: rgba(255,255,255,0.04) !important; }
+.recharts-text { fill: rgb(var(--txt-3)) !important; font-size: 11px !important; }
+
+/* ─── Animations ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+.animate-fade-up    { animation: fadeUp   0.3s cubic-bezier(0.16,1,0.3,1); }
+.animate-fade-in    { animation: fadeIn   0.2s ease-out; }
+.animate-scale-in   { animation: scaleIn  0.2s cubic-bezier(0.16,1,0.3,1); }
+
+/* ─── App Layout (never rely on Tailwind JIT for structural offsets) ─── */
+.app-main {
+  min-height: 100vh;
+  padding-bottom: 96px; /* space for mobile bottom nav */
+}
+
+@media (min-width: 1024px) {
+  .app-main {
+    margin-left: 280px; /* match sidebar width */
+    padding-bottom: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.app-content {
+  padding: 40px 20px;
 }
+
+@media (min-width: 640px) {
+  .app-content {
+    padding: 52px 36px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-content {
+    padding: 60px 60px;
+  }
+}
+
+/* Reusable card box — use this for any inline div that is a card */
+.card-box {
+  background: rgb(22, 22, 26);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+/* Consistent section gap */
+.section-gap {
+  margin-bottom: 48px;
+}
+
+/* ─── Heatmap ─── */
+.heatmap-cell {
+  border-radius: 4px;
+  transition: transform 0.12s ease;
+}
+.heatmap-cell:hover { transform: scale(1.3); z-index: 10; }
+
+/* ─── Prose ─── */
+.prose-custom { color: rgb(var(--txt-2)); line-height: 1.75; }
+.prose-custom h1,.prose-custom h2,.prose-custom h3 { color: rgb(var(--txt-1)); font-weight: 600; margin: 1.25em 0 0.4em; }
+.prose-custom p  { margin-bottom: 0.75em; }
+.prose-custom code { background: rgba(255,255,255,0.06); padding: 0.1em 0.4em; border-radius: 5px; font-size: 0.875em; color: rgb(var(--accent-hi)); }
+.prose-custom a { color: rgb(var(--accent-hi)); text-decoration: underline; text-underline-offset: 3px; }
+.prose-custom ul,.prose-custom ol { padding-left: 1.5em; margin-bottom: 0.75em; }
+.prose-custom blockquote { border-left: 2px solid rgba(var(--accent),0.4); padding-left: 1em; color: rgb(var(--txt-3)); }
