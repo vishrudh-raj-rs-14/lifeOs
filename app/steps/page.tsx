@@ -12,6 +12,7 @@ import { todayStr, formatShortDate } from "@/lib/utils";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, LineChart, Line,
 } from "recharts";
+import { ActivityHeatmap, EMERALD_COLORS } from "@/components/ui/activity-heatmap";
 import { Footprints, Plus } from "lucide-react";
 
 interface StepEntry {
@@ -79,6 +80,9 @@ export default function StepsPage() {
     return { date: formatShortDate(parseISO(e.date)), avg };
   });
 
+  const heatmapData: Record<string, number> = {};
+  for (const e of entries) heatmapData[e.date] = e.count;
+
   const todayEntry = entries.find((e) => e.date === todayStr());
   const avgSteps = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.count, 0) / entries.length) : 0;
   const bestDay = entries.length > 0 ? entries.reduce((m, e) => e.count > m.count ? e : m, entries[0]) : null;
@@ -111,6 +115,16 @@ export default function StepsPage() {
           label="Best Day"
           value={bestDay ? bestDay.count.toLocaleString() : "—"}
           accent="green"
+        />
+      </div>
+
+      <div className="section-gap">
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Daily Steps Consistency"
+          colors={EMERALD_COLORS}
+          getLevel={(v) => v === 0 ? 0 : v < 5000 ? 1 : v < 8000 ? 2 : v < 10000 ? 3 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: not logged` : `${d}: ${v.toLocaleString()} steps`}
         />
       </div>
 

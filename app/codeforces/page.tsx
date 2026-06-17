@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
+import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { cn, todayStr, formatShortDate } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import {
@@ -139,6 +140,12 @@ export default function CodeForcesPage() {
   const currentRating = ratings.length > 0 ? ratings[ratings.length - 1].newRating : null;
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
+  // Heatmap data: problems solved per day
+  const heatmapData: Record<string, number> = {};
+  for (const [date, probs] of Object.entries(grouped)) {
+    heatmapData[date] = probs.length;
+  }
+
   return (
     <AppShell>
       <PageHeader
@@ -151,7 +158,7 @@ export default function CodeForcesPage() {
         }
       />
 
-      {/* Stats */}
+      {/* Stats — all consistent StatCards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 section-gap">
         <StatCard
           label="Total Solved"
@@ -162,28 +169,37 @@ export default function CodeForcesPage() {
         <StatCard
           label="Today"
           value={String(todayProblems.length)}
+          sub={todayProblems.length >= 1 ? "✓ goal hit" : "target: 1"}
           accent={todayProblems.length >= 1 ? "green" : "neutral"}
         />
-        <div
-          className="col-span-2 rounded-2xl p-6"
-          style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.07)" }}
-        >
-          <div
-            className="w-9 h-9 rounded-xl flex items-center justify-center mb-4"
-            style={{ background: "rgba(139,92,246,0.12)", color: "rgb(167,139,250)" }}
-          >
-            <TrendingUp size={16} />
-          </div>
-          <p className="text-[11.5px] font-medium mb-1.5" style={{ color: "rgb(100,100,115)" }}>Current Rating</p>
-          {currentRating ? (
-            <>
-              <p className="text-[22px] font-semibold text-violet-400 tabular-nums tracking-tight leading-tight">{currentRating}</p>
-              <p className="text-[11.5px] mt-1.5" style={{ color: "rgb(85,85,100)" }}>{getRatingLabel(currentRating)}</p>
-            </>
-          ) : (
-            <p className="text-[22px] font-semibold tabular-nums tracking-tight leading-tight" style={{ color: "rgb(80,80,95)" }}>—</p>
+        <StatCard
+          label="Current Rating"
+          value={currentRating ? String(currentRating) : "—"}
+          sub={currentRating ? getRatingLabel(currentRating) : "no contests yet"}
+          accent="violet"
+          icon={<TrendingUp size={16} />}
+        />
+        <StatCard
+          label="This Week"
+          value={String(
+            Object.entries(grouped).filter(([d]) => {
+              const diff = (new Date().getTime() - new Date(d).getTime()) / 86400000;
+              return diff <= 7;
+            }).reduce((s, [, ps]) => s + ps.length, 0)
           )}
-        </div>
+          sub="problems"
+          accent="neutral"
+        />
+      </div>
+
+      {/* Consistency heatmap */}
+      <div className="section-gap">
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Problem Solving Activity"
+          getLevel={(v) => v === 0 ? 0 : v === 1 ? 2 : v === 2 ? 3 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: no problems` : `${d}: ${v} problem${v > 1 ? "s" : ""}`}
+        />
       </div>
 
       {/* Problems over time chart */}

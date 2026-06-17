@@ -10,6 +10,7 @@ import { format, parseISO } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend,
 } from "recharts";
+import { ActivityHeatmap, RED_COLORS } from "@/components/ui/activity-heatmap";
 import { Monitor, Plus, Play } from "lucide-react";
 
 interface ScreenTimeEntry {
@@ -78,6 +79,9 @@ export default function ScreenTimePage() {
     "Social Media": e.socialMediaMinutes,
   }));
 
+  const heatmapData: Record<string, number> = {};
+  for (const e of entries) heatmapData[e.date] = e.youtubeMinutes + e.socialMediaMinutes;
+
   const todayEntry = entries.find((e) => e.date === todayStr());
   const avgYt = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.youtubeMinutes, 0) / entries.length) : 0;
   const avgSocial = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.socialMediaMinutes, 0) / entries.length) : 0;
@@ -113,6 +117,16 @@ export default function ScreenTimePage() {
           <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] mb-1" style={{ color: "rgb(70,70,85)" }}>Avg Social</p>
           <p className="text-xl font-bold text-violet-400 tabular-nums tracking-tight">{avgSocial > 0 ? minutesToHours(avgSocial) : "—"}</p>
         </div>
+      </div>
+
+      <div className="section-gap">
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Screen Time Activity (more red = more time)"
+          colors={RED_COLORS}
+          getLevel={(v) => v === 0 ? 0 : v < 30 ? 1 : v < 60 ? 2 : v < 120 ? 3 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: not logged` : `${d}: ${minutesToHours(v)} total`}
+        />
       </div>
 
       {chartData.length > 1 && (

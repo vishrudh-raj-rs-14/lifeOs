@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { cn, todayStr } from "@/lib/utils";
 import { format, addDays, parseISO } from "date-fns";
+import { ActivityHeatmap, EMERALD_COLORS } from "@/components/ui/activity-heatmap";
 import { Target, Flame, Check, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Goal {
@@ -89,12 +90,13 @@ export default function GoalsPage() {
 
   const allDone = goals.length > 0 && goals.every((g) => g.completed);
 
-  // Last 28 days heatmap
-  const heatmapDays: string[] = [];
-  for (let i = 27; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    heatmapDays.push(format(d, "yyyy-MM-dd"));
+  // Build heatmap data: 0=no goals, 0.5=partial, 1=all done
+  // We store a 0-4 level: encode ratio as 0,1,2,3,4
+  const heatmapData: Record<string, number> = {};
+  for (const [date, val] of Object.entries(heatmap)) {
+    if (val.total === 0) continue;
+    const ratio = val.completed / val.total;
+    heatmapData[date] = ratio === 0 ? 1 : ratio < 1 ? 3 : 4;
   }
 
   return (
@@ -251,49 +253,23 @@ export default function GoalsPage() {
       </div>
 
       {/* Heatmap */}
-      <div
-        className="rounded-2xl"
-        style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.07)" }}
-      >
-        <div className="px-6 pt-5 pb-4">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgb(70,70,85)" }}>
-            Last 28 Days
-          </p>
-        </div>
-        <div className="px-6 pb-6">
-          <div className="grid grid-cols-7 gap-1">
-            {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
-              <div key={i} className="text-center text-[10px] pb-1" style={{ color: "rgb(80,80,95)" }}>{d}</div>
-            ))}
-            {heatmapDays.map((d) => {
-              const data = heatmap[d];
-              const ratio = data ? data.completed / data.total : 0;
-              const color = !data ? "bg-white/[0.03]"
-                : ratio === 1 ? "bg-emerald-500/80"
-                : ratio >= 0.5 ? "bg-violet-500/50"
-                : "bg-red-500/25";
-              return (
-                <div
-                  key={d}
-                  title={data ? `${d}: ${data.completed}/${data.total}` : d}
-                  className={cn("aspect-square rounded-lg cursor-default", color)}
-                />
-              );
-            })}
-          </div>
-          <div className="flex gap-4 mt-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgb(90,90,105)" }}>
-              <div className="w-3 h-3 rounded-lg bg-emerald-500/80" /> All done
-            </div>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgb(90,90,105)" }}>
-              <div className="w-3 h-3 rounded-lg bg-violet-500/50" /> Partial
-            </div>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgb(90,90,105)" }}>
-              <div className="w-3 h-3 rounded-lg bg-white/[0.03]" /> None
-            </div>
-          </div>
-        </div>
-      </div>
+      <ActivityHeatmap
+        data={heatmapData}
+        title="Goal Completion History"
+        colors={[
+          "rgba(255,255,255,0.04)",   // 0 - no goals set
+          "rgba(239,68,68,0.30)",     // 1 - goals set, 0 done
+          "rgba(255,255,255,0.04)",   // 2 - unused
+          "rgba(245,158,11,0.55)",    // 3 - partial
+          "rgba(52,211,153,0.90)",    // 4 - all done
+        ]}
+        getLevel={(v) => v as 0 | 1 | 2 | 3 | 4}
+        tooltipLabel={(v, d) => {
+          const h = heatmap[d];
+          if (!h) return `${d}: no goals`;
+          return `${d}: ${h.completed}/${h.total} done`;
+        }}
+      />
     </AppShell>
   );
 }

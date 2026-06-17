@@ -8,12 +8,10 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Modal } from "@/components/ui/modal";
 import { Badge } from "@/components/ui/badge";
-import { cn, todayStr, getDaysInMonth, getMondayOfWeek, formatShortDate } from "@/lib/utils";
-import {
-  format, parseISO, startOfWeek, endOfWeek,
-  getMonth, getYear, addMonths, subMonths,
-} from "date-fns";
-import { Plus, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
+import { cn, todayStr, getMondayOfWeek, formatShortDate } from "@/lib/utils";
+import { format, parseISO, startOfWeek, endOfWeek } from "date-fns";
+import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
+import { Plus, Trash2, ChevronDown, ChevronUp, Dumbbell } from "lucide-react";
 
 interface GymEntry  { id: number; date: string; didGo: boolean }
 interface WorkoutEntry { id: number; date: string; type: string; notes?: string }
@@ -41,7 +39,6 @@ export default function GymPage() {
   const [tab, setTab]             = useState<Tab>("calendar");
   const [gymEntries, setGymEntries]     = useState<GymEntry[]>([]);
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
-  const [viewDate, setViewDate]   = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
 
@@ -52,11 +49,10 @@ export default function GymPage() {
   const [savingWorkout, setSavingWorkout] = useState(false);
 
   const fetchGym = useCallback(async () => {
-    const monthStr = format(viewDate, "yyyy-MM");
-    const res = await fetch(`/api/gym?month=${monthStr}`);
+    const res = await fetch("/api/gym");
     const data = await res.json();
     setGymEntries(data.entries || []);
-  }, [viewDate]);
+  }, []);
 
   const fetchWorkouts = async () => {
     const res = await fetch("/api/workouts");
@@ -96,9 +92,8 @@ export default function GymPage() {
     fetchWorkouts();
   }
 
-  // ── Calendar helpers ──
+  // ── Derived data ──
   const entriesMap = new Map(gymEntries.map((e) => [e.date, e]));
-  const days = getDaysInMonth(getYear(viewDate), getMonth(viewDate));
   const today = todayStr();
   const now = new Date();
   const weekStart = startOfWeek(now, { weekStartsOn: 1 });
@@ -107,8 +102,9 @@ export default function GymPage() {
     const d = parseISO(e.date);
     return d >= weekStart && d <= weekEnd && e.didGo;
   }).length;
-  const firstDayOfWeek = (days[0].getDay() + 6) % 7;
-  const paddedDays: (Date | null)[] = [...Array(firstDayOfWeek).fill(null), ...days];
+
+  const heatmapData: Record<string, number> = {};
+  for (const e of gymEntries) if (e.didGo) heatmapData[e.date] = 1;
 
   // ── Workout grouping ──
   const weeks = new Map<string, WorkoutEntry[]>();
@@ -213,70 +209,12 @@ export default function GymPage() {
 
       {/* ── Calendar Tab ── */}
       {tab === "calendar" && (
-        <div className="card-box">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-white font-semibold">{format(viewDate, "MMMM yyyy")}</h3>
-            <div className="flex gap-1">
-              <button onClick={() => setViewDate(subMonths(viewDate, 1))} className="p-1.5 hover:bg-white/[0.04] rounded-lg transition-colors" style={{ color: "rgb(120,120,135)" }}>
-                <ChevronLeft size={16} />
-              </button>
-              <button onClick={() => setViewDate(addMonths(viewDate, 1))} className="p-1.5 hover:bg-white/[0.04] rounded-lg transition-colors" style={{ color: "rgb(120,120,135)" }}>
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map((d) => (
-              <div key={d} className="text-center text-[10px] font-medium py-1" style={{ color: "rgb(80,80,95)" }}>{d}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {paddedDays.map((day, i) => {
-              if (!day) return <div key={`e-${i}`} />;
-              const key = format(day, "yyyy-MM-dd");
-              const entry = entriesMap.get(key);
-              const isToday = key === today;
-              const isFuture = key > today;
-              const isPast = key < today;
-              const didGo = entry?.didGo;
-              return (
-                <div
-                  key={key}
-                  className={cn(
-                    "aspect-square rounded-lg flex items-center justify-center text-xs font-medium select-none",
-                    didGo
-                      ? "bg-violet-500/20 text-violet-400"
-                      : isPast
-                        ? "bg-red-500/10 text-red-400/50"
-                        : isFuture
-                          ? ""
-                          : isToday
-                            ? "ring-1 ring-violet-500/40"
-                            : "",
-                    isToday && didGo && "ring-1 ring-violet-500/60",
-                  )}
-                  style={
-                    isFuture ? { color: "rgb(45,45,55)", background: "rgba(255,255,255,0.01)" }
-                      : isToday && !didGo ? { color: "rgb(160,163,175)", background: "rgba(139,92,246,0.06)" }
-                      : !didGo && isPast ? undefined
-                      : !entry ? { color: "rgb(130,133,145)", background: "rgba(255,255,255,0.03)" }
-                      : undefined
-                  }
-                >
-                  {day.getDate()}
-                </div>
-              );
-            })}
-          </div>
-          <div className="flex gap-4 mt-5 pt-5" style={{ borderTop: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgb(120,120,135)" }}>
-              <div className="w-3 h-3 rounded bg-violet-500/30" /> Gym day
-            </div>
-            <div className="flex items-center gap-1.5 text-xs" style={{ color: "rgb(120,120,135)" }}>
-              <div className="w-3 h-3 rounded bg-red-500/20" /> Rest day
-            </div>
-          </div>
-        </div>
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Gym Attendance"
+          getLevel={(v) => v === 0 ? 0 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: rest day` : `${d}: trained`}
+        />
       )}
 
       {/* ── Workout Log Tab ── */}

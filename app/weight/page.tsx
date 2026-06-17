@@ -11,6 +11,7 @@ import { todayStr, formatShortDate } from "@/lib/utils";
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
+import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { Scale, Plus, Trash2 } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 
@@ -86,6 +87,9 @@ export default function WeightPage() {
     weight: e.weightKg,
   }));
 
+  const heatmapData: Record<string, number> = {};
+  for (const e of entries) heatmapData[e.date] = 1;
+
   const latestWeight = entries[0]?.weightKg;
   const prevWeight = entries[1]?.weightKg;
   const weightChange = latestWeight && prevWeight ? (latestWeight - prevWeight).toFixed(1) : null;
@@ -124,6 +128,15 @@ export default function WeightPage() {
           label="Entries"
           value={entries.length.toString()}
           accent="neutral"
+        />
+      </div>
+
+      <div className="section-gap">
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Logging Consistency"
+          getLevel={(v) => v === 0 ? 0 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: not logged` : `${d}: logged`}
         />
       </div>
 

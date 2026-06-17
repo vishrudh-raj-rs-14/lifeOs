@@ -13,6 +13,7 @@ import { format, parseISO } from "date-fns";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine,
 } from "recharts";
+import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { Clock, Plus } from "lucide-react";
 
 interface DeepWorkEntry {
@@ -72,6 +73,9 @@ export default function DeepWorkPage() {
 
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const last30 = sorted.slice(-30);
+
+  const heatmapData: Record<string, number> = {};
+  for (const e of entries) heatmapData[e.date] = e.minutes;
   const chartData = last30.map((e) => ({
     date: formatShortDate(parseISO(e.date)),
     minutes: e.minutes,
@@ -121,6 +125,15 @@ export default function DeepWorkPage() {
           label="Daily Avg"
           value={avgMinutes > 0 ? minutesToHours(avgMinutes) : "—"}
           accent="neutral"
+        />
+      </div>
+
+      <div className="section-gap">
+        <ActivityHeatmap
+          data={heatmapData}
+          title="Deep Work Consistency"
+          getLevel={(v) => v === 0 ? 0 : v < 60 ? 1 : v < 120 ? 2 : v < 240 ? 3 : 4}
+          tooltipLabel={(v, d) => v === 0 ? `${d}: no session` : `${d}: ${minutesToHours(v)}`}
         />
       </div>
 
