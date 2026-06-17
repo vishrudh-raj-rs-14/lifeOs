@@ -43,7 +43,7 @@ const DAY_LABEL_W = 16;
 export function ActivityHeatmap({
   data,
   title,
-  weeks = 26,
+  weeks = 52,
   getLevel,
   colors = VIOLET_COLORS,
   tooltipLabel,
