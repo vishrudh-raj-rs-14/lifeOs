@@ -10,6 +10,7 @@ interface ActivityHeatmapProps {
   colors?: [string, string, string, string, string];
   tooltipLabel?: (val: number, date: string) => string;
   legend?: { label: string; level: 0 | 1 | 2 | 3 | 4 }[];
+  hideLegend?: boolean;
 }
 
 const VIOLET_COLORS: [string, string, string, string, string] = [
@@ -48,6 +49,7 @@ export function ActivityHeatmap({
   colors = VIOLET_COLORS,
   tooltipLabel,
   legend,
+  hideLegend = false,
 }: ActivityHeatmapProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -208,27 +210,26 @@ export function ActivityHeatmap({
         </div>
 
         {/* Legend */}
-        <div
-          className="flex items-center gap-3 mt-4 pt-3"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-        >
-          <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>Less</span>
-          <div style={{ display: "flex", gap: "3px" }}>
-            {([0, 1, 2, 3, 4] as const).map((l) => (
-              <div
-                key={l}
-                style={{ width: 11, height: 11, borderRadius: 2, background: colors[l] }}
-              />
+        {!hideLegend && (
+          <div
+            className="flex items-center gap-3 mt-4 pt-3"
+            style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+          >
+            <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>Less</span>
+            <div style={{ display: "flex", gap: "3px" }}>
+              {([0, 1, 2, 3, 4] as const).map((l) => (
+                <div key={l} style={{ width: 11, height: 11, borderRadius: 2, background: colors[l] }} />
+              ))}
+            </div>
+            <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>More</span>
+            {legend?.map((item) => (
+              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <div style={{ width: 11, height: 11, borderRadius: 2, background: colors[item.level] }} />
+                <span style={{ fontSize: "10px", color: "rgb(90,90,105)" }}>{item.label}</span>
+              </div>
             ))}
           </div>
-          <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>More</span>
-          {legend?.map((item) => (
-            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 11, height: 11, borderRadius: 2, background: colors[item.level] }} />
-              <span style={{ fontSize: "10px", color: "rgb(90,90,105)" }}>{item.label}</span>
-            </div>
-          ))}
-        </div>
+        )}
       </div>
     </div>
   );

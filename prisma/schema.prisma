@@ -139,3 +139,10 @@ model ScreenTime {
   socialMediaMinutes Int      @default(0)
   createdAt          DateTime @default(now())
 }
+
+model WeightPhoto {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @db.Date
+  filename  String   @unique
+  createdAt DateTime @default(now())
+}

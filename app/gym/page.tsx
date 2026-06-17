@@ -214,6 +214,7 @@ export default function GymPage() {
           title="Gym Attendance"
           getLevel={(v) => v === 0 ? 0 : 4}
           tooltipLabel={(v, d) => v === 0 ? `${d}: rest day` : `${d}: trained`}
+          hideLegend
         />
       )}
 
