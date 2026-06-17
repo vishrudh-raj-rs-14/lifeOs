@@ -3,7 +3,7 @@
 import { format, startOfWeek, subWeeks, isAfter, parseISO } from "date-fns";
 
 interface ActivityHeatmapProps {
-  data: Record<string, number>; // "yyyy-MM-dd" -> numeric value
+  data: Record<string, number>;
   title: string;
   weeks?: number;
   getLevel: (val: number) => 0 | 1 | 2 | 3 | 4;
@@ -37,11 +37,13 @@ export const RED_COLORS: [string, string, string, string, string] = [
 ];
 
 const DAY_LABELS = ["M", "", "W", "", "F", "", "S"];
+const GAP = 3;
+const DAY_LABEL_W = 16;
 
 export function ActivityHeatmap({
   data,
   title,
-  weeks = 16,
+  weeks = 26,
   getLevel,
   colors = VIOLET_COLORS,
   tooltipLabel,
@@ -50,15 +52,12 @@ export function ActivityHeatmap({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  // Start from Monday of (weeks-1) weeks ago
   const gridStart = startOfWeek(subWeeks(today, weeks - 1), { weekStartsOn: 1 });
 
-  // Build cell list (always full weeks)
   const cells: { date: string; val: number; inFuture: boolean; isToday: boolean }[] = [];
   const todayStr = format(today, "yyyy-MM-dd");
   const cursor = new Date(gridStart);
 
-  // Go until end of this week
   const endOfThisWeek = startOfWeek(today, { weekStartsOn: 1 });
   endOfThisWeek.setDate(endOfThisWeek.getDate() + 6);
 
@@ -75,26 +74,23 @@ export function ActivityHeatmap({
 
   const numCols = Math.ceil(cells.length / 7);
 
-  // Month labels: find the col where a new month starts
-  const monthLabels: { col: number; label: string }[] = [];
+  // Month labels: first column of each new month
+  const monthLabels: Record<number, string> = {};
   for (let col = 0; col < numCols; col++) {
     const cellIdx = col * 7;
     if (cellIdx >= cells.length) break;
     const d = parseISO(cells[cellIdx].date);
     if (d.getDate() <= 7) {
-      monthLabels.push({ col, label: format(d, "MMM") });
+      monthLabels[col] = format(d, "MMM");
     }
   }
-
-  const CELL = 11;
-  const GAP = 2;
 
   return (
     <div
       className="rounded-2xl"
       style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.07)" }}
     >
-      <div className="px-6 pt-5 pb-3">
+      <div className="px-5 pt-5 pb-4">
         <p
           className="text-[10.5px] font-semibold uppercase tracking-[0.1em]"
           style={{ color: "rgb(70,70,85)" }}
@@ -102,144 +98,137 @@ export function ActivityHeatmap({
           {title}
         </p>
       </div>
-      <div className="px-6 pb-5 overflow-x-auto">
-        <div style={{ display: "inline-flex", flexDirection: "column", gap: 0 }}>
-          {/* Month labels row */}
+
+      <div className="px-5 pb-5">
+        {/* Month label row — aligned with the cells grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `${DAY_LABEL_W}px 1fr`,
+            gap: `${GAP}px`,
+            marginBottom: "4px",
+          }}
+        >
+          <div /> {/* spacer for day-label column */}
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `repeat(${numCols}, ${CELL}px)`,
+              gridTemplateColumns: `repeat(${numCols}, 1fr)`,
               gap: `${GAP}px`,
-              marginLeft: `${CELL + GAP + 4}px`,
-              marginBottom: "3px",
             }}
           >
-            {Array.from({ length: numCols }, (_, col) => {
-              const lbl = monthLabels.find((m) => m.col === col);
-              return (
-                <div
-                  key={col}
-                  style={{
-                    fontSize: "9px",
-                    color: "rgb(80,80,95)",
-                    overflow: "visible",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {lbl?.label ?? ""}
-                </div>
-              );
-            })}
+            {Array.from({ length: numCols }, (_, col) => (
+              <div
+                key={col}
+                style={{
+                  fontSize: "9px",
+                  color: "rgb(80,80,95)",
+                  overflow: "visible",
+                  whiteSpace: "nowrap",
+                  userSelect: "none",
+                }}
+              >
+                {monthLabels[col] ?? ""}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Day labels + grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `${DAY_LABEL_W}px 1fr`,
+            gap: `${GAP}px`,
+            alignItems: "stretch",
+          }}
+        >
+          {/* Day-of-week labels */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateRows: "repeat(7, 1fr)",
+              gap: `${GAP}px`,
+            }}
+          >
+            {DAY_LABELS.map((lbl, i) => (
+              <div
+                key={i}
+                style={{
+                  fontSize: "9px",
+                  color: "rgb(70,70,85)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-end",
+                  paddingRight: "2px",
+                  userSelect: "none",
+                }}
+              >
+                {lbl}
+              </div>
+            ))}
           </div>
 
-          {/* Day labels + grid */}
-          <div style={{ display: "flex", gap: `${GAP + 2}px` }}>
-            {/* Day of week labels */}
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: `${GAP}px`,
-                flexShrink: 0,
-              }}
-            >
-              {DAY_LABELS.map((lbl, i) => (
+          {/* Cells — fills remaining width, cells are square via aspect-ratio */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateRows: "repeat(7, 1fr)",
+              gridAutoFlow: "column",
+              gridAutoColumns: "1fr",
+              gap: `${GAP}px`,
+              // Drive container height from width so cells stay square:
+              // height ≈ width * 7/numCols
+              aspectRatio: `${numCols} / 7`,
+            }}
+          >
+            {cells.map((cell) => {
+              const level = cell.inFuture ? 0 : getLevel(cell.val);
+              const bg = cell.inFuture ? "rgba(255,255,255,0.015)" : colors[level];
+              const tip = cell.inFuture
+                ? ""
+                : tooltipLabel
+                ? tooltipLabel(cell.val, cell.date)
+                : `${cell.date}: ${cell.val}`;
+              return (
                 <div
-                  key={i}
+                  key={cell.date}
+                  title={tip}
                   style={{
-                    height: `${CELL}px`,
-                    width: `${CELL}px`,
-                    fontSize: "9px",
-                    color: "rgb(70,70,85)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "flex-end",
+                    background: bg,
+                    borderRadius: "2px",
+                    cursor: "default",
+                    outline: cell.isToday ? "1px solid rgba(139,92,246,0.7)" : undefined,
+                    outlineOffset: "1px",
                   }}
-                >
-                  {lbl}
-                </div>
-              ))}
-            </div>
-
-            {/* Cells grid — column-major order */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateRows: `repeat(7, ${CELL}px)`,
-                gridAutoFlow: "column",
-                gridAutoColumns: `${CELL}px`,
-                gap: `${GAP}px`,
-              }}
-            >
-              {cells.map((cell) => {
-                const level = cell.inFuture ? 0 : getLevel(cell.val);
-                const bg = cell.inFuture
-                  ? "rgba(255,255,255,0.01)"
-                  : colors[level];
-                const tip = cell.inFuture
-                  ? ""
-                  : tooltipLabel
-                  ? tooltipLabel(cell.val, cell.date)
-                  : `${cell.date}: ${cell.val}`;
-                return (
-                  <div
-                    key={cell.date}
-                    title={tip}
-                    style={{
-                      background: bg,
-                      borderRadius: "2px",
-                      cursor: "default",
-                      outline: cell.isToday ? "1px solid rgba(139,92,246,0.6)" : undefined,
-                      outlineOffset: "1px",
-                    }}
-                  />
-                );
-              })}
-            </div>
+                />
+              );
+            })}
           </div>
         </div>
 
         {/* Legend */}
-        {legend && (
-          <div
-            className="flex items-center gap-4 mt-4 pt-3"
-            style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
-          >
-            <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>Less</span>
-            <div style={{ display: "flex", gap: "3px" }}>
-              {([0, 1, 2, 3, 4] as const).map((l) => (
-                <div
-                  key={l}
-                  style={{
-                    width: 11,
-                    height: 11,
-                    borderRadius: 2,
-                    background: colors[l],
-                  }}
-                />
-              ))}
-            </div>
-            <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>More</span>
-            {legend.map((item) => (
+        <div
+          className="flex items-center gap-3 mt-4 pt-3"
+          style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}
+        >
+          <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>Less</span>
+          <div style={{ display: "flex", gap: "3px" }}>
+            {([0, 1, 2, 3, 4] as const).map((l) => (
               <div
-                key={item.label}
-                style={{ display: "flex", alignItems: "center", gap: 4 }}
-              >
-                <div
-                  style={{
-                    width: 11,
-                    height: 11,
-                    borderRadius: 2,
-                    background: colors[item.level],
-                  }}
-                />
-                <span style={{ fontSize: "10px", color: "rgb(90,90,105)" }}>
-                  {item.label}
-                </span>
-              </div>
+                key={l}
+                style={{ width: 11, height: 11, borderRadius: 2, background: colors[l] }}
+              />
             ))}
           </div>
-        )}
+          <span style={{ fontSize: "10px", color: "rgb(70,70,85)" }}>More</span>
+          {legend?.map((item) => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 11, height: 11, borderRadius: 2, background: colors[item.level] }} />
+              <span style={{ fontSize: "10px", color: "rgb(90,90,105)" }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
