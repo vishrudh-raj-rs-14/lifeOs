@@ -16,8 +16,7 @@ import {
 import { Plus, Trash2, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Dumbbell } from "lucide-react";
 
 interface GymEntry  { id: number; date: string; didGo: boolean }
-interface Exercise  { name: string; sets: number; reps: number | string; weight?: number | string }
-interface WorkoutEntry { id: number; date: string; type: string; exercises: Exercise[]; notes?: string }
+interface WorkoutEntry { id: number; date: string; type: string; notes?: string }
 
 const WORKOUT_TYPES = [
   { value: "PUSH",      label: "Push"      },
@@ -47,10 +46,9 @@ export default function GymPage() {
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
 
   // Workout form state
-  const [date,      setDate]      = useState(todayStr());
-  const [type,      setType]      = useState("PUSH");
-  const [exercises, setExercises] = useState<Exercise[]>([{ name: "", sets: 3, reps: 10 }]);
-  const [notes,     setNotes]     = useState("");
+  const [date,  setDate]  = useState(todayStr());
+  const [type,  setType]  = useState("PUSH");
+  const [notes, setNotes] = useState("");
   const [savingWorkout, setSavingWorkout] = useState(false);
 
   const fetchGym = useCallback(async () => {
@@ -75,18 +73,16 @@ export default function GymPage() {
   useEffect(() => { fetchWorkouts(); }, []);
 
   async function handleSaveWorkout() {
-    if (!exercises[0]?.name) return;
     setSavingWorkout(true);
     await fetch("/api/workouts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, type, exercises, notes }),
+      body: JSON.stringify({ date, type, exercises: [], notes }),
     });
     setSavingWorkout(false);
     setShowModal(false);
-    setExercises([{ name: "", sets: 3, reps: 10 }]);
     setNotes("");
-    fetchGym();      // refresh calendar (gym day was auto-set)
+    fetchGym();
     fetchWorkouts();
   }
 
@@ -330,41 +326,23 @@ export default function GymPage() {
                   </button>
 
                   {isExpanded && (
-                    <div className="px-6 pb-6 space-y-4">
+                    <div className="px-6 pb-6 space-y-3">
                       {workouts.map((w) => (
-                        <div key={w.id} className="rounded-xl p-5 border border-white/[0.07]" style={{ background: "rgb(16,16,20)" }}>
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <Badge variant={TYPE_COLORS[w.type]}>{WORKOUT_TYPES.find((t) => t.value === w.type)?.label}</Badge>
+                        <div key={w.id} className="rounded-xl px-4 py-3 border border-white/[0.07] flex items-start justify-between gap-3" style={{ background: "rgb(16,16,20)" }}>
+                          <div className="flex items-start gap-3 min-w-0">
+                            <Badge variant={TYPE_COLORS[w.type]} className="mt-0.5 shrink-0">
+                              {WORKOUT_TYPES.find((t) => t.value === w.type)?.label}
+                            </Badge>
+                            <div className="min-w-0">
                               <span className="text-xs" style={{ color: "rgb(120,120,135)" }}>{format(parseISO(w.date), "EEE, MMM d")}</span>
+                              {w.notes && (
+                                <p className="text-xs mt-1 leading-relaxed" style={{ color: "rgb(180,183,195)" }}>{w.notes}</p>
+                              )}
                             </div>
-                            <button onClick={() => handleDeleteWorkout(w.id)} className="hover:text-red-400 transition-colors" style={{ color: "rgb(80,80,95)" }}>
-                              <Trash2 size={13} />
-                            </button>
                           </div>
-                          <table className="w-full text-xs">
-                            <thead>
-                              <tr style={{ color: "rgb(80,80,95)" }}>
-                                <th className="text-left pb-2 font-medium">Exercise</th>
-                                <th className="text-center pb-2 font-medium">Sets</th>
-                                <th className="text-center pb-2 font-medium">Reps</th>
-                                <th className="text-center pb-2 font-medium">Weight</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(Array.isArray(w.exercises) ? w.exercises : []).map((ex: Exercise, i: number) => (
-                                <tr key={i} className="border-t border-white/[0.07]">
-                                  <td className="py-2" style={{ color: "rgb(210,210,220)" }}>{ex.name}</td>
-                                  <td className="py-2 text-center" style={{ color: "rgb(160,163,175)" }}>{ex.sets}</td>
-                                  <td className="py-2 text-center" style={{ color: "rgb(160,163,175)" }}>{ex.reps}</td>
-                                  <td className="py-2 text-center" style={{ color: "rgb(160,163,175)" }}>{ex.weight || "—"}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                          {w.notes && (
-                            <p className="text-xs mt-3 pt-3 border-t border-white/[0.07]" style={{ color: "rgb(120,120,135)" }}>{w.notes}</p>
-                          )}
+                          <button onClick={() => handleDeleteWorkout(w.id)} className="hover:text-red-400 transition-colors shrink-0 mt-0.5" style={{ color: "rgb(70,70,85)" }}>
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       ))}
                     </div>
@@ -377,34 +355,13 @@ export default function GymPage() {
       )}
 
       {/* Log Workout Modal */}
-      <Modal open={showModal} onClose={() => setShowModal(false)} title="Log Workout" className="sm:max-w-2xl">
+      <Modal open={showModal} onClose={() => setShowModal(false)} title="Log Workout">
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <Input label="Date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             <Select label="Type" options={WORKOUT_TYPES} value={type} onChange={(e) => setType(e.target.value)} />
           </div>
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgb(70,70,85)" }}>Exercises</p>
-              <button onClick={() => setExercises([...exercises, { name: "", sets: 3, reps: 10 }])} className="text-xs text-violet-400 hover:text-violet-300 transition-colors">+ Add</button>
-            </div>
-            <div className="space-y-2">
-              {exercises.map((ex, i) => (
-                <div key={i} className="grid gap-2 items-center" style={{ gridTemplateColumns: "1fr 60px 60px 70px auto" }}>
-                  <input className="bg-[rgb(16,16,20)] border border-white/[0.08] text-white rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-violet-500/70 transition-colors" placeholder="Exercise name" value={ex.name} onChange={(e) => { const u=[...exercises]; u[i]={...u[i],name:e.target.value}; setExercises(u); }} />
-                  <input className="bg-[rgb(16,16,20)] border border-white/[0.08] text-white rounded-xl px-2 py-2 text-sm text-center focus:outline-none focus:border-violet-500/70 transition-colors" placeholder="Sets" type="number" value={ex.sets} onChange={(e) => { const u=[...exercises]; u[i]={...u[i],sets:parseInt(e.target.value)||0}; setExercises(u); }} />
-                  <input className="bg-[rgb(16,16,20)] border border-white/[0.08] text-white rounded-xl px-2 py-2 text-sm text-center focus:outline-none focus:border-violet-500/70 transition-colors" placeholder="Reps" value={ex.reps} onChange={(e) => { const u=[...exercises]; u[i]={...u[i],reps:e.target.value}; setExercises(u); }} />
-                  <input className="bg-[rgb(16,16,20)] border border-white/[0.08] text-white rounded-xl px-2 py-2 text-sm text-center focus:outline-none focus:border-violet-500/70 transition-colors" placeholder="kg" value={ex.weight||""} onChange={(e) => { const u=[...exercises]; u[i]={...u[i],weight:e.target.value}; setExercises(u); }} />
-                  {exercises.length > 1 && (
-                    <button onClick={() => setExercises(exercises.filter((_,idx)=>idx!==i))} className="hover:text-red-400 transition-colors p-1" style={{ color: "rgb(80,80,95)" }}>
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-          <Textarea label="Notes (optional)" placeholder="Any notes about this workout..." value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} />
+          <Textarea label="Summary (optional)" placeholder="e.g. Heavy squats, felt strong. PR on bench." value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
           <Button onClick={handleSaveWorkout} loading={savingWorkout} variant="primary" className="w-full">
             Save Workout
           </Button>
