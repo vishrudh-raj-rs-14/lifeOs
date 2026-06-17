@@ -43,7 +43,6 @@ export default function GymPage() {
   const [gymEntries, setGymEntries]     = useState<GymEntry[]>([]);
   const [workoutEntries, setWorkoutEntries] = useState<WorkoutEntry[]>([]);
   const [viewDate, setViewDate]   = useState(new Date());
-  const [saving, setSaving]       = useState<string | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [expandedWeeks, setExpandedWeeks] = useState<Set<string>>(new Set());
 
@@ -74,18 +73,6 @@ export default function GymPage() {
 
   useEffect(() => { fetchGym(); },     [fetchGym]);
   useEffect(() => { fetchWorkouts(); }, []);
-
-  async function toggleGymDay(date: string, current: boolean | null) {
-    setSaving(date);
-    const didGo = current === null ? true : !current;
-    await fetch("/api/gym", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ date, didGo }),
-    });
-    setSaving(null);
-    fetchGym();
-  }
 
   async function handleSaveWorkout() {
     if (!exercises[0]?.name) return;
@@ -179,7 +166,7 @@ export default function GymPage() {
             style={{ width: `${Math.min(thisWeekGym / 5, 1) * 100}%` }}
           />
         </div>
-        {/* Day bubbles */}
+        {/* Day bubbles — read only, derived from workout log */}
         <div className="flex gap-2">
           {["M","T","W","T","F","S","S"].map((day, i) => {
             const d = new Date(weekStart);
@@ -187,25 +174,26 @@ export default function GymPage() {
             const key = format(d, "yyyy-MM-dd");
             const entry = entriesMap.get(key);
             const isToday = key === today;
+            const isPast = key < today;
+            const didGo = entry?.didGo;
             return (
-              <button
+              <div
                 key={i}
-                onClick={() => toggleGymDay(key, entry?.didGo ?? null)}
                 className={cn(
-                  "flex-1 h-10 rounded-lg text-xs font-medium transition-all duration-150 border",
-                  entry?.didGo
+                  "flex-1 h-10 rounded-lg text-xs font-medium border select-none",
+                  "flex items-center justify-center",
+                  didGo
                     ? "bg-violet-500/20 border-violet-500/40 text-violet-400"
-                    : entry?.didGo === false
-                      ? "border-white/[0.07] text-[rgb(110,113,125)]"
+                    : isPast && !isToday
+                      ? "bg-red-500/10 border-red-500/20 text-red-400/60"
                       : isToday
-                        ? "border-violet-500/40 border-dashed text-[rgb(160,163,175)]"
-                        : "border-white/[0.07] text-[rgb(80,80,95)]",
-                  saving === key && "opacity-50"
+                        ? "border-violet-500/30 border-dashed text-[rgb(140,143,155)]"
+                        : "border-white/[0.05] text-[rgb(60,60,75)]",
                 )}
-                style={!entry && !isToday ? { background: "rgba(255,255,255,0.04)" } : undefined}
+                style={!didGo && !isPast && !isToday ? { background: "rgba(255,255,255,0.02)" } : undefined}
               >
                 {day}
-              </button>
+              </div>
             );
           })}
         </div>
@@ -253,28 +241,34 @@ export default function GymPage() {
               const entry = entriesMap.get(key);
               const isToday = key === today;
               const isFuture = key > today;
+              const isPast = key < today;
+              const didGo = entry?.didGo;
               return (
-                <button
+                <div
                   key={key}
-                  onClick={() => !isFuture && toggleGymDay(key, entry?.didGo ?? null)}
-                  disabled={isFuture || saving === key}
                   className={cn(
-                    "aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all",
-                    entry?.didGo ? "bg-violet-500/20 text-violet-400 hover:bg-violet-500/30"
-                      : entry?.didGo === false ? "bg-red-500/10 text-red-500/50 hover:bg-red-500/20"
-                      : isFuture ? "cursor-default"
-                      : "hover:bg-white/[0.06] cursor-pointer",
-                    isToday && !entry && "ring-1 ring-violet-500/50",
-                    saving === key && "opacity-50"
+                    "aspect-square rounded-lg flex items-center justify-center text-xs font-medium select-none",
+                    didGo
+                      ? "bg-violet-500/20 text-violet-400"
+                      : isPast
+                        ? "bg-red-500/10 text-red-400/50"
+                        : isFuture
+                          ? ""
+                          : isToday
+                            ? "ring-1 ring-violet-500/40"
+                            : "",
+                    isToday && didGo && "ring-1 ring-violet-500/60",
                   )}
                   style={
-                    isFuture ? { color: "rgb(55,55,65)", background: "rgba(255,255,255,0.02)" }
-                      : !entry ? { color: "rgb(160,163,175)", background: "rgba(255,255,255,0.04)" }
+                    isFuture ? { color: "rgb(45,45,55)", background: "rgba(255,255,255,0.01)" }
+                      : isToday && !didGo ? { color: "rgb(160,163,175)", background: "rgba(139,92,246,0.06)" }
+                      : !didGo && isPast ? undefined
+                      : !entry ? { color: "rgb(130,133,145)", background: "rgba(255,255,255,0.03)" }
                       : undefined
                   }
                 >
                   {day.getDate()}
-                </button>
+                </div>
               );
             })}
           </div>
