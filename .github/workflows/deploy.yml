@@ -21,6 +21,7 @@ jobs:
           username: ${{ secrets.VM_USER }}
           key:      ${{ secrets.VM_SSH_KEY }}
           port:     22
+          envs:     APP_PIN,JWT_SECRET,DATABASE_URL
           script: |
             set -e
             echo "=== Deploying LifeOS ==="
@@ -30,6 +31,13 @@ jobs:
             echo "→ Pulling latest code..."
             git fetch origin main
             git reset --hard origin/main
+
+            echo "→ Ensuring .env is correct..."
+            cat > .env <<EOF
+DATABASE_URL="${DATABASE_URL}"
+JWT_SECRET="${JWT_SECRET}"
+APP_PIN="${APP_PIN}"
+EOF
 
             echo "→ Installing dependencies..."
             npm install --prefer-offline
