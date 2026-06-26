@@ -80,9 +80,9 @@ export default function ScreenTimePage() {
   }));
 
   const heatmapData: Record<string, number> = {};
-  for (const e of entries) heatmapData[e.date] = e.youtubeMinutes + e.socialMediaMinutes;
+  for (const e of entries) heatmapData[e.date.slice(0, 10)] = e.youtubeMinutes + e.socialMediaMinutes;
 
-  const todayEntry = entries.find((e) => e.date === todayStr());
+  const todayEntry = entries.find((e) => e.date.slice(0, 10) === todayStr());
   const avgYt = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.youtubeMinutes, 0) / entries.length) : 0;
   const avgSocial = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.socialMediaMinutes, 0) / entries.length) : 0;
 

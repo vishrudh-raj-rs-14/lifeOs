@@ -146,3 +146,15 @@ model WeightPhoto {
   filename  String   @unique
   createdAt DateTime @default(now())
 }
+
+// Tracks new daily habits: sleep, project, whole_foods, tech_reading, nonfiction
+model DailyHabit {
+  id        Int      @id @default(autoincrement())
+  date      DateTime @db.Date
+  habit     String   // "sleep" | "project" | "whole_foods" | "tech_reading" | "nonfiction"
+  value     Float    // hours for sleep, minutes for project, % for whole_foods, 1 for binary
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@unique([date, habit])
+}

@@ -75,7 +75,7 @@ export default function DeepWorkPage() {
   const last30 = sorted.slice(-30);
 
   const heatmapData: Record<string, number> = {};
-  for (const e of entries) heatmapData[e.date] = e.minutes;
+  for (const e of entries) heatmapData[e.date.slice(0, 10)] = e.minutes;
   const chartData = last30.map((e) => ({
     date: formatShortDate(parseISO(e.date)),
     minutes: e.minutes,

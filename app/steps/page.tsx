@@ -81,9 +81,9 @@ export default function StepsPage() {
   });
 
   const heatmapData: Record<string, number> = {};
-  for (const e of entries) heatmapData[e.date] = e.count;
+  for (const e of entries) heatmapData[e.date.slice(0, 10)] = e.count;
 
-  const todayEntry = entries.find((e) => e.date === todayStr());
+  const todayEntry = entries.find((e) => e.date.slice(0, 10) === todayStr());
   const avgSteps = entries.length > 0 ? Math.round(entries.reduce((s, e) => s + e.count, 0) / entries.length) : 0;
   const bestDay = entries.length > 0 ? entries.reduce((m, e) => e.count > m.count ? e : m, entries[0]) : null;
 

@@ -5,13 +5,15 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard, Scale, Footprints, Dumbbell, Target, Code2,
   BookOpen, Brain, Clock, Monitor, TrendingUp, FileText, LogOut, Zap,
+  ListChecks,
 } from "lucide-react";
 
 const groups = [
   {
     items: [
-      { href: "/dashboard", label: "Dashboard",  icon: LayoutDashboard },
-      { href: "/goals",     label: "Daily Goals", icon: Target },
+      { href: "/dashboard", label: "Dashboard",    icon: LayoutDashboard },
+      { href: "/goals",     label: "Daily Goals",  icon: Target },
+      { href: "/habits",    label: "Daily Habits", icon: ListChecks },
     ],
   },
   {

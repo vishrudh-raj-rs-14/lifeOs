@@ -104,7 +104,7 @@ export default function GymPage() {
   }).length;
 
   const heatmapData: Record<string, number> = {};
-  for (const e of gymEntries) if (e.didGo) heatmapData[e.date] = 1;
+  for (const e of gymEntries) if (e.didGo) heatmapData[e.date.slice(0, 10)] = 1;
 
   // ── Workout grouping ──
   const weeks = new Map<string, WorkoutEntry[]>();

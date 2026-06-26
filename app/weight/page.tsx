@@ -10,7 +10,7 @@ import { ActivityHeatmap } from "@/components/ui/activity-heatmap";
 import { format, parseISO, differenceInDays, subDays } from "date-fns";
 import { todayStr, formatShortDate } from "@/lib/utils";
 import {
-  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { Scale, Plus, Trash2, Camera, ImageIcon, X } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
@@ -26,17 +26,6 @@ interface MilestonePhoto {
   weight: number | null;
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
-  if (active && payload?.length) {
-    return (
-      <div style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, fontSize: 12, color: "white" }} className="px-3 py-2">
-        <p style={{ color: "rgb(120,120,135)" }}>{label}</p>
-        <p className="text-violet-400 font-semibold">{payload[0].value} kg</p>
-      </div>
-    );
-  }
-  return null;
-};
 
 function findClosest(photos: WeightPhoto[], targetDate: Date): WeightPhoto | null {
   if (!photos.length) return null;
@@ -58,6 +47,7 @@ export default function WeightPage() {
   const [date, setDate] = useState(todayStr());
   const [weight, setWeight] = useState("");
   const [saving, setSaving] = useState(false);
+  const [chartRange, setChartRange] = useState<"1W" | "1M" | "3M" | "6M" | "1Y" | "ALL">("3M");
   const [photoDate, setPhotoDate] = useState(todayStr());
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -209,17 +199,28 @@ export default function WeightPage() {
     }
   }
 
-  const chartData = [...entries].reverse().slice(-30).map((e) => ({
-    date: formatShortDate(parseISO(e.date)),
-    weight: e.weightKg,
-  }));
+  const RANGE_DAYS: Record<string, number> = { "1W": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365, "ALL": Infinity };
+  const cutoff = RANGE_DAYS[chartRange];
+  const sortedEntries = [...entries].sort((a, b) => a.date.localeCompare(b.date));
+  const chartData = sortedEntries
+    .filter((e) => differenceInDays(new Date(), parseISO(e.date)) <= cutoff)
+    .map((e) => ({
+      date: formatShortDate(parseISO(e.date)),
+      weight: e.weightKg,
+      fullDate: e.date,
+    }));
 
   const latestWeight = entries[0]?.weightKg;
-  const prevWeight = entries[1]?.weightKg;
-  const weightChange = latestWeight && prevWeight ? (latestWeight - prevWeight).toFixed(1) : null;
+
+  // Week-over-week avg change
+  const sortedWeeks = [...weeklyAverages].sort((a, b) => b.weekStart.localeCompare(a.weekStart));
+  const thisWeekAvg = sortedWeeks[0]?.avg ?? null;
+  const prevWeekAvg = sortedWeeks[1]?.avg ?? null;
+  const weeklyChange = thisWeekAvg !== null && prevWeekAvg !== null
+    ? (thisWeekAvg - prevWeekAvg).toFixed(1) : null;
 
   const heatmapData: Record<string, number> = {};
-  for (const e of entries) heatmapData[e.date] = 1;
+  for (const e of entries) heatmapData[e.date.slice(0, 10)] = 1;
 
   return (
     <AppShell>
@@ -242,13 +243,17 @@ export default function WeightPage() {
       <div className="grid grid-cols-3 gap-5 section-gap">
         <StatCard label="Current" value={latestWeight ? `${latestWeight} kg` : "—"} accent="violet" icon={<Scale size={16} />} />
         <div className="rounded-2xl p-6" style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <p className="text-[11.5px] font-medium mb-1.5" style={{ color: "rgb(100,100,115)" }}>Change</p>
+          <p className="text-[11.5px] font-medium mb-1.5" style={{ color: "rgb(100,100,115)" }}>Weekly Change</p>
           <p className={`text-[22px] font-semibold tabular-nums tracking-tight leading-tight ${
-            weightChange === null ? "text-white" : parseFloat(weightChange) <= 0 ? "text-emerald-400" : "text-red-400"
+            weeklyChange === null ? "text-white" : parseFloat(weeklyChange) <= 0 ? "text-emerald-400" : "text-red-400"
           }`}>
-            {weightChange !== null ? `${parseFloat(weightChange) > 0 ? "+" : ""}${weightChange} kg` : "—"}
+            {weeklyChange !== null ? `${parseFloat(weeklyChange) > 0 ? "+" : ""}${weeklyChange} kg` : "—"}
           </p>
-          <p className="text-[11.5px] mt-1" style={{ color: "rgb(70,70,85)" }}>since last entry</p>
+          <p className="text-[11.5px] mt-1" style={{ color: "rgb(70,70,85)" }}>
+            {thisWeekAvg && prevWeekAvg
+              ? `${prevWeekAvg} → ${thisWeekAvg} kg avg`
+              : "vs prev week avg"}
+          </p>
         </div>
         <StatCard label="Entries" value={entries.length.toString()} accent="neutral" />
       </div>
@@ -298,26 +303,102 @@ export default function WeightPage() {
       )}
 
       {/* Trend chart */}
-      {chartData.length > 1 && (
-        <div className="section-gap">
-          <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em] mb-4" style={{ color: "rgb(70,70,85)" }}>30-Day Trend</p>
-          <Card>
-            <CardContent className="pt-5">
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11, fill: "rgb(90,90,105)" }} />
-                  <YAxis tick={{ fontSize: 11, fill: "rgb(90,90,105)" }} domain={["auto", "auto"]} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line type="monotone" dataKey="weight" stroke="#8B5CF6" strokeWidth={2}
-                    dot={{ fill: "#8B5CF6", r: 3, strokeWidth: 0 }}
-                    activeDot={{ r: 5, fill: "#8B5CF6" }} />
-                </LineChart>
+      <div className="section-gap">
+        <div className="rounded-2xl overflow-hidden" style={{ background: "rgb(22,22,26)", border: "1px solid rgba(255,255,255,0.07)" }}>
+          {/* Header + range tabs */}
+          <div className="px-6 pt-5 pb-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10.5px] font-semibold uppercase tracking-[0.1em]" style={{ color: "rgb(70,70,85)" }}>Weight Trend</p>
+              {chartData.length > 0 && (
+                <p className="text-xs mt-1" style={{ color: "rgb(100,100,115)" }}>
+                  {chartData[0]?.weight} kg → {chartData[chartData.length - 1]?.weight} kg
+                  {chartData.length > 1 && (() => {
+                    const delta = chartData[chartData.length - 1].weight - chartData[0].weight;
+                    return (
+                      <span className={delta <= 0 ? " text-emerald-400" : " text-red-400"}>
+                        {" "}{delta > 0 ? "+" : ""}{delta.toFixed(1)} kg
+                      </span>
+                    );
+                  })()}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-0.5 p-1 rounded-xl" style={{ background: "rgb(16,16,20)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {(["1W","1M","3M","6M","1Y","ALL"] as const).map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setChartRange(r)}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all duration-150"
+                  style={chartRange === r
+                    ? { background: "rgba(139,92,246,0.2)", color: "rgb(167,139,250)" }
+                    : { color: "rgb(90,90,105)" }
+                  }
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Chart */}
+          {chartData.length === 0 ? (
+            <div className="flex items-center justify-center pb-10 pt-4">
+              <p className="text-sm" style={{ color: "rgb(70,70,85)" }}>No data for this range</p>
+            </div>
+          ) : (
+            <div className="px-2 pb-5">
+              <ResponsiveContainer width="100%" height={220}>
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="rgb(139,92,246)" stopOpacity={0.25} />
+                      <stop offset="100%" stopColor="rgb(139,92,246)" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fontSize: 10, fill: "rgb(80,80,95)" }}
+                    axisLine={false}
+                    tickLine={false}
+                    interval="preserveStartEnd"
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: "rgb(80,80,95)" }}
+                    domain={["auto", "auto"]}
+                    axisLine={false}
+                    tickLine={false}
+                    width={40}
+                  />
+                  <Tooltip
+                    content={({ active, payload }) => {
+                      if (active && payload?.length) {
+                        const d = payload[0].payload;
+                        return (
+                          <div style={{ background: "rgb(28,28,34)", border: "1px solid rgba(139,92,246,0.3)", borderRadius: 10, padding: "8px 12px" }}>
+                            <p style={{ fontSize: 11, color: "rgb(120,120,135)", marginBottom: 2 }}>{d.fullDate}</p>
+                            <p style={{ fontSize: 15, fontWeight: 600, color: "white" }}>{d.weight} kg</p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="weight"
+                    stroke="rgb(139,92,246)"
+                    strokeWidth={2}
+                    fill="url(#weightGrad)"
+                    dot={chartData.length === 1 ? { fill: "rgb(139,92,246)", r: 4, strokeWidth: 0 } : false}
+                    activeDot={{ r: 5, fill: "rgb(167,139,250)", strokeWidth: 2, stroke: "rgba(139,92,246,0.4)" }}
+                  />
+                </AreaChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Logging consistency heatmap */}
       <div className="section-gap">

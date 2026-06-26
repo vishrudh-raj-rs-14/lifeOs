@@ -13,6 +13,7 @@ const primary = [
 ];
 
 const more = [
+  { href: "/habits",        label: "Daily Habits" },
   { href: "/weight",        label: "Weight" },
   { href: "/steps",         label: "Steps" },
   { href: "/deep-work",     label: "Deep Work" },
